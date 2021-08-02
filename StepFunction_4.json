@@ -1,0 +1,110 @@
+{
+  "Comment": "This is your state machine",
+  "StartAt": "Set Data - Yes or No?",
+  "States": {
+    "Set Data - Yes or No?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.choice",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.values",
+              "IsPresent": true
+            }
+          ],
+          "Next": "SettingUp Data in SQS"
+        }
+      ],
+      "Default": "Get Messages from SQS"
+    },
+    "SettingUp Data in SQS": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage",
+      "Parameters": {
+        "MessageBody.$": "$.values",
+        "QueueUrl": "https://sqs.ap-south-1.amazonaws.com/1499511119xx/StepFunction_Queue"
+      },
+      "Next": "Result From SQS"
+    },
+    "Result From SQS": {
+      "Type": "Succeed"
+    },
+    "Get Messages from SQS": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:ap-south-1:1499511119xx:function:SQS_MessageReader:$LATEST"
+      },
+      "Next": "Check For Messages",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "Fallback State",
+          "Comment": "Task Fail"
+        }
+      ]
+    },
+    "Fallback State": {
+      "Type": "Fail"
+    },
+    "Check For Messages": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.body",
+            "IsNull": true
+          },
+          "Next": "Save Item In DB"
+        }
+      ],
+      "Default": "No Messages in SQS"
+    },
+    "Save Item In DB": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "ResultPath": null,
+      "Parameters": {
+        "TableName": "Demo_StateMachine",
+        "Item": {
+          "emailId": {
+            "S.$": "$.body.email"
+          },
+          "name": {
+            "S.$": "$.body.name"
+          }
+        }
+      },
+      "Next": "Deleting Message"
+    },
+    "Deleting Message": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload.$": "$",
+        "FunctionName": "arn:aws:lambda:ap-south-1:1499511119xx:function:DeletingMessage:$LATEST"
+      },
+      "Next": "Get Messages from SQS",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "Fallback State"
+        }
+      ]
+    },
+    "No Messages in SQS": {
+      "Type": "Pass",
+      "End": true
+    }
+  }
+}

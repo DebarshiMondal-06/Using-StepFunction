@@ -1,0 +1,30 @@
+thead tr th{
+  font-weight: bold!important;
+  font-size: 20px;
+}
+tbody tr{
+  font-size: 18px;
+}
+.table-custom{
+  line-height: 50px;
+}
+.table-custom tr{
+  transition: 0.3s all ease-in-out;
+}
+.table-custom tr:hover{
+  background-color: silver;
+  color: aliceblue!important;
+}
+.start-btn {
+  line-height: 1px;
+  font-size: large;
+}
+.start-btn button{
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-top: 6px;
+  padding: 8px 10px;
+}
+.fa-check-circle{
+  font-size: 24px;
+}

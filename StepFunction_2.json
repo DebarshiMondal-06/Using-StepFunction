@@ -1,0 +1,39 @@
+{
+  "StartAt": "Generate Buy/Sell recommendation",
+  "States": {
+    "Generate Buy/Sell recommendation": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:region:14315xxxxxx:function:Lambda_StateMachine",
+      "HeartbeatSeconds": 60,
+      "ResultPath": "$.value",
+      "Next": "Buy or Sell?"
+    },
+    "Buy or Sell?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.value.body",
+          "StringEquals": "buy",
+          "Next": "SMS_SNS"
+        },
+        {
+          "Variable": "$.value.body",
+          "StringEquals": "sell",
+          "Next": "SMS_SNS"
+        }
+      ]
+    },
+    "SMS_SNS": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:region:14315xxxxxxx:newTopic",
+        "Message.$": "$.value"
+      },
+      "Next": "Dead"
+    },
+    "Dead": {
+      "Type": "Succeed"
+    }
+  }
+}

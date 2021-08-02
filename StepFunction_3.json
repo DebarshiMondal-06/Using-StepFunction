@@ -1,0 +1,88 @@
+{
+  "Comment": "This is your state machine",
+  "StartAt": "Check Validation",
+  "States": {
+    "Check Validation": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "ResultPath": "$.Payload",
+      "ResultSelector": {
+        "functionResult.$": "$.Payload.result"
+      },
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:region:143151xxxxxx:function:Lambda_StateMachine:$LATEST",
+        "Payload.$": "$"
+      },
+      "Next": "Choice"
+    },
+    "Choice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Payload.functionResult",
+          "BooleanEquals": true,
+          "Next": "Process the Data"
+        }
+      ],
+      "Default": "Fail State"
+    },
+    "Process the Data": {
+      "Type": "Parallel",
+      "End": true,
+      "Branches": [
+        {
+          "StartAt": "Set The Data",
+          "States": {
+            "Set The Data": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:putItem",
+              "ResultSelector": {
+                "StatusCode.$": "$.SdkHttpMetadata.HttpStatusCode"
+              },
+              "Parameters": {
+                "TableName": "Demo_StateMachine",
+                "Item": {
+                  "emailId": {
+                    "S.$": "$.email"
+                  },
+                  "gender": {
+                    "S.$": "$.gender"
+                  }
+                }
+              },
+              "Next": "Successfully Set In DB"
+            },
+            "Successfully Set In DB": {
+              "Type": "Succeed"
+            }
+          }
+        },
+        {
+          "StartAt": "Sent Notifications",
+          "States": {
+            "Sent Notifications": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "arn:aws:sns:region:143151xxxxxx:dynamodb",
+                "Message": {
+                  "EmailId.$": "$.email",
+                  "Gender.$": "$.gender",
+                  "Result": "Success"
+                }
+              },
+              "Next": "Success fully Sent Email"
+            },
+            "Success fully Sent Email": {
+              "Type": "Succeed"
+            }
+          }
+        }
+      ]
+    },
+    "Fail State": {
+      "Type": "Fail",
+      "Cause": "May be due to Invalid Input"
+    }
+  }
+}
